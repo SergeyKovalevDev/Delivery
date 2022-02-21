@@ -1,22 +1,23 @@
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.*;
 import static java.lang.Thread.sleep;
 
 public class Delivery {
     private final BlockingQueue<Order> orderQueue = new ArrayBlockingQueue<>(10);
-    private final Thread car1 = new Thread(new DeliveryCar());
-    private final Thread car2 = new Thread(new DeliveryCar());
-    private final Thread car3 = new Thread(new DeliveryCar());
+    private final Thread threadDeliveryCar1 = new Thread(new DeliveryCar());
+    private final Thread threadDeliveryCar2 = new Thread(new DeliveryCar());
+    private final Thread threadDeliveryCar3 = new Thread(new DeliveryCar());
 
     public Delivery() {
-        car1.start();
-        car2.start();
-        car3.start();
+        threadDeliveryCar1.start();
+        threadDeliveryCar2.start();
+        threadDeliveryCar3.start();
     }
 
     private class DeliveryCar implements Runnable {
         private final int carID;
         private static int carCounter = 1;
+        int orderID;
+        private static final int DELIVERY_TIME = 500;
 
         public DeliveryCar() {
             carID = carCounter++;
@@ -27,10 +28,10 @@ public class Delivery {
             while (true) {
                 try {
                     Order order = orderQueue.take(); // Throws: InterruptedException – if interrupted while waiting
-                    int orderID = order.orderID;
-                    System.out.println("The car#" + carID + " took the order #" + orderID);
-                    sleep(500); //Throws: InterruptedException – if any thread has interrupted the current thread.
-                    System.out.println("The car#" + carID + " delivered the order #" + orderID);
+                    orderID = order.orderID;
+                    System.out.println("The car #" + carID + " took the order #" + orderID);
+                    sleep(DELIVERY_TIME); //Throws: InterruptedException – if any thread has interrupted the current thread.
+                    System.out.println("The car #" + carID + " delivered the order #" + orderID);
                 } catch (InterruptedException ie) {
                     break;
                 }
@@ -47,16 +48,21 @@ public class Delivery {
         }
     }
 
-    public void deliveryStarter(int timeOfWork) throws InterruptedException {
+    public void queueFiller(int timeOfWork) throws InterruptedException {
         Thread queueFiller = new Thread(() -> {
             while (true) {
                 try {
                     orderQueue.put(new Order()); // Throws: InterruptedException – if interrupted while waiting
-                    sleep(1000); //Throws: InterruptedException – if any thread has interrupted the current thread.
+                    sleep(900); //Throws: InterruptedException – if any thread has interrupted the current thread.
                 } catch (InterruptedException ie) {
-                    car1.interrupt();
-                    car2.interrupt();
-                    car3.interrupt();
+                    try {
+                        sleep(DeliveryCar.DELIVERY_TIME);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    threadDeliveryCar1.interrupt();
+                    threadDeliveryCar2.interrupt();
+                    threadDeliveryCar3.interrupt();
                     break;
                 }
             }
@@ -68,6 +74,6 @@ public class Delivery {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        new Delivery().deliveryStarter(10000);
+        new Delivery().queueFiller(10000);
     }
 }
